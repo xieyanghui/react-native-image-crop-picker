@@ -64,6 +64,20 @@
     return result;
 }
 
+- (NSString *)determineMimeTypeFromOutputFormat:(NSString *)outputFormat {
+    if ([outputFormat isEqual: @"png"]) {
+        return @"image/png";
+    }
+    return @"image/jpeg";
+}
+
+- (NSData *)convertImageToOutputFormat:(UIImage*)image outputFormat:(NSString *)outputFormat compressQuality:(NSNumber *)compressQuality {
+    if ([outputFormat isEqual: @"png"]) {
+        return UIImagePNGRepresentation(image);
+    }
+    return UIImageJPEGRepresentation(image, [compressQuality floatValue]);
+}
+
 - (ImageResult*) compressImage:(UIImage*)image
                    withOptions:(NSDictionary*)options {
     
@@ -72,68 +86,70 @@
     result.height = @(image.size.height);
     result.image = image;
 
+
     // result.mime = @"image/jpeg";
     
-    // NSNumber *compressImageMaxWidth = [options valueForKey:@"compressImageMaxWidth"];
-    // NSNumber *compressImageMaxHeight = [options valueForKey:@"compressImageMaxHeight"];
+    NSNumber *compressImageMaxWidth = [options valueForKey:@"compressImageMaxWidth"];
+    NSNumber *compressImageMaxHeight = [options valueForKey:@"compressImageMaxHeight"];
+    NSString *outputFormat = [options valueForKey:@"imageOutputFormat"];
+    result.mime = [self determineMimeTypeFromOutputFormat:outputFormat];
+    // determine if it is necessary to resize image
+    BOOL shouldResizeWidth = (compressImageMaxWidth != nil && [compressImageMaxWidth floatValue] < image.size.width);
+    BOOL shouldResizeHeight = (compressImageMaxHeight != nil && [compressImageMaxHeight floatValue] < image.size.height);
     
-    // // determine if it is necessary to resize image
-    // BOOL shouldResizeWidth = (compressImageMaxWidth != nil && [compressImageMaxWidth floatValue] < image.size.width);
-    // BOOL shouldResizeHeight = (compressImageMaxHeight != nil && [compressImageMaxHeight floatValue] < image.size.height);
-    
-    // if (shouldResizeWidth || shouldResizeHeight) {
-    //     CGFloat maxWidth = compressImageMaxWidth != nil ? [compressImageMaxWidth floatValue] : image.size.width;
-    //     CGFloat maxHeight = compressImageMaxHeight != nil ? [compressImageMaxHeight floatValue] : image.size.height;
+    if (shouldResizeWidth || shouldResizeHeight) {
+        CGFloat maxWidth = compressImageMaxWidth != nil ? [compressImageMaxWidth floatValue] : image.size.width;
+        CGFloat maxHeight = compressImageMaxHeight != nil ? [compressImageMaxHeight floatValue] : image.size.height;
         
-    //     [self compressImageDimensions:image
-    //             compressImageMaxWidth:maxWidth
-    //            compressImageMaxHeight:maxHeight
-    //                        intoResult:result];
-    // }
-    
-    // // parse desired image quality
-    // NSNumber *compressQuality = [options valueForKey:@"compressImageQuality"];
-    // if (compressQuality == nil) {
-    //     compressQuality = [NSNumber numberWithFloat:0.8];
-    // }
-    
-    // // convert image to jpeg representation
-    // result.data = UIImageJPEGRepresentation(result.image, [compressQuality floatValue]);
-    
-    NSString *mimeType = options[@"mimeType"];
-    if ([mimeType isEqualToString:@"image/png"]) {
-        // Keep png format if mimeType is image/png
-        result.mime = @"image/png";
-        result.data = UIImagePNGRepresentation(result.image);
-    } else {
-        result.mime = @"image/jpeg";
-
-        NSNumber *compressImageMaxWidth = [options valueForKey:@"compressImageMaxWidth"];
-        NSNumber *compressImageMaxHeight = [options valueForKey:@"compressImageMaxHeight"];
-
-        // determine if it is necessary to resize image
-        BOOL shouldResizeWidth = (compressImageMaxWidth != nil && [compressImageMaxWidth floatValue] < image.size.width);
-        BOOL shouldResizeHeight = (compressImageMaxHeight != nil && [compressImageMaxHeight floatValue] < image.size.height);
-
-        if (shouldResizeWidth || shouldResizeHeight) {
-            CGFloat maxWidth = compressImageMaxWidth != nil ? [compressImageMaxWidth floatValue] : image.size.width;
-            CGFloat maxHeight = compressImageMaxHeight != nil ? [compressImageMaxHeight floatValue] : image.size.height;
-
-            [self compressImageDimensions:image
-                    compressImageMaxWidth:maxWidth
-                   compressImageMaxHeight:maxHeight
-                               intoResult:result];
-        }
-
-        // parse desired image quality
-        NSNumber *compressQuality = [options valueForKey:@"compressImageQuality"];
-        if (compressQuality == nil) {
-            compressQuality = [NSNumber numberWithFloat:0.8];
-        }
-
-        // convert image to jpeg representation
-        result.data = UIImageJPEGRepresentation(result.image, [compressQuality floatValue]);
+        [self compressImageDimensions:image
+                compressImageMaxWidth:maxWidth
+               compressImageMaxHeight:maxHeight
+                           intoResult:result];
     }
+    
+    // parse desired image quality
+    NSNumber *compressQuality = [options valueForKey:@"compressImageQuality"];
+    if (compressQuality == nil) {
+        compressQuality = [NSNumber numberWithFloat:0.8];
+    }
+    
+    // convert image to jpeg representation
+    // result.data = UIImageJPEGRepresentation(result.image, [compressQuality floatValue]);
+    result.data = [self convertImageToOutputFormat:result.image outputFormat:outputFormat compressQuality:compressQuality];
+    // NSString *mimeType = options[@"mimeType"];
+    // if ([mimeType isEqualToString:@"image/png"]) {
+    //     // Keep png format if mimeType is image/png
+    //     result.mime = @"image/png";
+    //     result.data = UIImagePNGRepresentation(result.image);
+    // } else {
+    //     result.mime = @"image/jpeg";
+
+    //     NSNumber *compressImageMaxWidth = [options valueForKey:@"compressImageMaxWidth"];
+    //     NSNumber *compressImageMaxHeight = [options valueForKey:@"compressImageMaxHeight"];
+
+    //     // determine if it is necessary to resize image
+    //     BOOL shouldResizeWidth = (compressImageMaxWidth != nil && [compressImageMaxWidth floatValue] < image.size.width);
+    //     BOOL shouldResizeHeight = (compressImageMaxHeight != nil && [compressImageMaxHeight floatValue] < image.size.height);
+
+    //     if (shouldResizeWidth || shouldResizeHeight) {
+    //         CGFloat maxWidth = compressImageMaxWidth != nil ? [compressImageMaxWidth floatValue] : image.size.width;
+    //         CGFloat maxHeight = compressImageMaxHeight != nil ? [compressImageMaxHeight floatValue] : image.size.height;
+
+    //         [self compressImageDimensions:image
+    //                 compressImageMaxWidth:maxWidth
+    //                compressImageMaxHeight:maxHeight
+    //                            intoResult:result];
+    //     }
+
+    //     // parse desired image quality
+    //     NSNumber *compressQuality = [options valueForKey:@"compressImageQuality"];
+    //     if (compressQuality == nil) {
+    //         compressQuality = [NSNumber numberWithFloat:0.8];
+    //     }
+
+    //     // convert image to jpeg representation
+    //     result.data = UIImageJPEGRepresentation(result.image, [compressQuality floatValue]);
+    // }
     return result;
 }
 
